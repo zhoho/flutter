@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 @TestOn('!chrome')
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,11 +18,10 @@ final Finder _timePickerDialog = find.byWidgetPredicate((Widget widget) => '${wi
 
 class _TimePickerLauncher extends StatefulWidget {
   const _TimePickerLauncher({
-    Key? key,
     required this.onChanged,
     this.entryMode = TimePickerEntryMode.dial,
     this.restorationId,
-  }) : super(key: key);
+  });
 
   final ValueChanged<TimeOfDay?> onChanged;
   final TimePickerEntryMode entryMode;
@@ -105,8 +106,10 @@ Future<Offset?> startPicker(
     ValueChanged<TimeOfDay?> onChanged, {
       TimePickerEntryMode entryMode = TimePickerEntryMode.dial,
       String? restorationId,
+      bool useMaterial3 = false,
     }) async {
   await tester.pumpWidget(MaterialApp(
+    theme: ThemeData(useMaterial3: useMaterial3),
     restorationScopeId: 'app',
     locale: const Locale('en', 'US'),
     home: _TimePickerLauncher(
@@ -137,6 +140,14 @@ void main() {
 }
 
 void _tests() {
+  testWidgets('Material3 has sentence case labels', (WidgetTester tester) async {
+    await startPicker(tester, (TimeOfDay? time) {
+      expect(find.text('Select time'), findsOneWidget);
+      expect(find.text('Enter time'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    }, useMaterial3: true);
+  });
+
   testWidgets('tap-select an hour', (WidgetTester tester) async {
     TimeOfDay? result;
 
@@ -611,6 +622,27 @@ void _tests() {
     tester.binding.window.clearDevicePixelRatioTestValue();
   });
 
+  testWidgets('when change orientation, should reflect in render objects', (WidgetTester tester) async {
+    // portrait
+    tester.binding.window.physicalSizeTestValue = const Size(800, 800.5);
+    tester.binding.window.devicePixelRatioTestValue = 1;
+    await mediaQueryBoilerplate(tester, false);
+
+    RenderObject render = tester.renderObject(find.byWidgetPredicate((Widget w) => '${w.runtimeType}' == '_DayPeriodInputPadding'));
+    expect((render as dynamic).orientation, Orientation.portrait); // ignore: avoid_dynamic_calls
+
+    // landscape
+    tester.binding.window.physicalSizeTestValue = const Size(800.5, 800);
+    tester.binding.window.devicePixelRatioTestValue = 1;
+    await mediaQueryBoilerplate(tester, false, tapButton: false);
+
+    render = tester.renderObject(find.byWidgetPredicate((Widget w) => '${w.runtimeType}' == '_DayPeriodInputPadding'));
+    expect((render as dynamic).orientation, Orientation.landscape); // ignore: avoid_dynamic_calls
+
+    tester.binding.window.clearPhysicalSizeTestValue();
+    tester.binding.window.clearDevicePixelRatioTestValue();
+  });
+
   testWidgets('builder parameter', (WidgetTester tester) async {
     Widget buildFrame(TextDirection textDirection) {
       return MaterialApp(
@@ -814,7 +846,6 @@ void _tests() {
     await mediaQueryBoilerplate(
       tester,
       false,
-      textScaleFactor: 1.0,
       initialTime: const TimeOfDay(hour: 7, minute: 41),
     );
 
@@ -849,6 +880,117 @@ void _tests() {
 
     expect(tester.getSize(find.text('41')).height, equals(minutesDisplayHeight));
     expect(tester.getSize(find.text('AM')).height, equals(amHeight2x));
+  });
+
+  group('showTimePicker avoids overlapping display features', () {
+    testWidgets('positioning with anchorPoint', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              // Display has a vertical hinge down the middle
+              data: const MediaQueryData(
+                size: Size(800, 600),
+                displayFeatures: <DisplayFeature>[
+                  DisplayFeature(
+                    bounds: Rect.fromLTRB(390, 0, 410, 600),
+                    type: DisplayFeatureType.hinge,
+                    state: DisplayFeatureState.unknown,
+                  ),
+                ],
+              ),
+              child: child!,
+            );
+          },
+          home: const Center(child: Text('Test')),
+        ),
+      );
+      final BuildContext context = tester.element(find.text('Test'));
+
+      showTimePicker(
+        context: context,
+        initialTime: const TimeOfDay(hour: 7, minute: 0),
+        anchorPoint: const Offset(1000, 0),
+      );
+
+      await tester.pumpAndSettle();
+      // Should take the right side of the screen
+      expect(tester.getTopLeft(find.byType(TimePickerDialog)), const Offset(410.0, 0.0));
+      expect(tester.getBottomRight(find.byType(TimePickerDialog)), const Offset(800.0, 600.0));
+    });
+
+    testWidgets('positioning with Directionality', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              // Display has a vertical hinge down the middle
+              data: const MediaQueryData(
+                size: Size(800, 600),
+                displayFeatures: <DisplayFeature>[
+                  DisplayFeature(
+                    bounds: Rect.fromLTRB(390, 0, 410, 600),
+                    type: DisplayFeatureType.hinge,
+                    state: DisplayFeatureState.unknown,
+                  ),
+                ],
+              ),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: child!,
+              ),
+            );
+          },
+          home: const Center(child: Text('Test')),
+        ),
+      );
+      final BuildContext context = tester.element(find.text('Test'));
+
+      // By default it should place the dialog on the right screen
+      showTimePicker(
+        context: context,
+        initialTime: const TimeOfDay(hour: 7, minute: 0),
+      );
+
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byType(TimePickerDialog)), const Offset(410.0, 0.0));
+      expect(tester.getBottomRight(find.byType(TimePickerDialog)), const Offset(800.0, 600.0));
+    });
+
+    testWidgets('positioning with defaults', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              // Display has a vertical hinge down the middle
+              data: const MediaQueryData(
+                size: Size(800, 600),
+                displayFeatures: <DisplayFeature>[
+                  DisplayFeature(
+                    bounds: Rect.fromLTRB(390, 0, 410, 600),
+                    type: DisplayFeatureType.hinge,
+                    state: DisplayFeatureState.unknown,
+                  ),
+                ],
+              ),
+              child: child!,
+            );
+          },
+          home: const Center(child: Text('Test')),
+        ),
+      );
+      final BuildContext context = tester.element(find.text('Test'));
+
+      // By default it should place the dialog on the left screen
+      showTimePicker(
+        context: context,
+        initialTime: const TimeOfDay(hour: 7, minute: 0),
+      );
+
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byType(TimePickerDialog)), Offset.zero);
+      expect(tester.getBottomRight(find.byType(TimePickerDialog)), const Offset(390.0, 600.0));
+    });
   });
 }
 
@@ -896,15 +1038,62 @@ void _testsInput() {
     expect(find.text(errorInvalidText), findsOneWidget);
   });
 
-  testWidgets('Can toggle to dial entry mode', (WidgetTester tester) async {
+  testWidgets('Can switch from input to dial entry mode', (WidgetTester tester) async {
     await mediaQueryBoilerplate(tester, true, entryMode: TimePickerEntryMode.input);
     await tester.tap(find.byIcon(Icons.access_time));
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNothing);
   });
 
+  testWidgets('Can switch from dial to input entry mode', (WidgetTester tester) async {
+    await mediaQueryBoilerplate(tester, true);
+    await tester.tap(find.byIcon(Icons.keyboard));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsWidgets);
+  });
+
+  testWidgets('Can not switch out of inputOnly mode', (WidgetTester tester) async {
+    await mediaQueryBoilerplate(tester, true, entryMode: TimePickerEntryMode.inputOnly);
+    expect(find.byType(TextField), findsWidgets);
+    expect(find.byIcon(Icons.access_time), findsNothing);
+  });
+
+  testWidgets('Can not switch out of dialOnly mode', (WidgetTester tester) async {
+    await mediaQueryBoilerplate(tester, true, entryMode: TimePickerEntryMode.dialOnly);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byIcon(Icons.keyboard), findsNothing);
+  });
+
+  testWidgets('Switching to dial entry mode triggers entry callback', (WidgetTester tester) async {
+    bool triggeredCallback = false;
+
+    await mediaQueryBoilerplate(tester, true, entryMode: TimePickerEntryMode.input, onEntryModeChange: (TimePickerEntryMode mode) {
+      if (mode == TimePickerEntryMode.dial) {
+        triggeredCallback = true;
+      }
+    });
+
+    await tester.tap(find.byIcon(Icons.access_time));
+    await tester.pumpAndSettle();
+    expect(triggeredCallback, true);
+  });
+
+  testWidgets('Switching to input entry mode triggers entry callback', (WidgetTester tester) async {
+    bool triggeredCallback = false;
+
+    await mediaQueryBoilerplate(tester, true, onEntryModeChange: (TimePickerEntryMode mode) {
+      if (mode == TimePickerEntryMode.input) {
+        triggeredCallback = true;
+      }
+    });
+
+    await tester.tap(find.byIcon(Icons.keyboard));
+    await tester.pumpAndSettle();
+    expect(triggeredCallback, true);
+  });
+
   testWidgets('Can double tap hours (when selected) to enter input mode', (WidgetTester tester) async {
-    await mediaQueryBoilerplate(tester, false, entryMode: TimePickerEntryMode.dial);
+    await mediaQueryBoilerplate(tester, false);
     final Finder hourFinder = find.ancestor(
       of: find.text('7'),
       matching: find.byType(InkWell),
@@ -922,7 +1111,7 @@ void _testsInput() {
   });
 
   testWidgets('Can not double tap hours (when not selected) to enter input mode', (WidgetTester tester) async {
-    await mediaQueryBoilerplate(tester, false, entryMode: TimePickerEntryMode.dial);
+    await mediaQueryBoilerplate(tester, false);
     final Finder hourFinder = find.ancestor(
       of: find.text('7'),
       matching: find.byType(InkWell),
@@ -948,7 +1137,7 @@ void _testsInput() {
   });
 
   testWidgets('Can double tap minutes (when selected) to enter input mode', (WidgetTester tester) async {
-    await mediaQueryBoilerplate(tester, false, entryMode: TimePickerEntryMode.dial);
+    await mediaQueryBoilerplate(tester, false);
     final Finder minuteFinder = find.ancestor(
       of: find.text('00'),
       matching: find.byType(InkWell),
@@ -970,7 +1159,7 @@ void _testsInput() {
   });
 
   testWidgets('Can not double tap minutes (when not selected) to enter input mode', (WidgetTester tester) async {
-    await mediaQueryBoilerplate(tester, false, entryMode: TimePickerEntryMode.dial);
+    await mediaQueryBoilerplate(tester, false);
     final Finder minuteFinder = find.ancestor(
       of: find.text('00'),
       matching: find.byType(InkWell),
@@ -1133,6 +1322,26 @@ void _testsInput() {
     await finishPicker(tester);
     expect(result, equals(const TimeOfDay(hour: 6, minute: 45)));
   });
+
+  testWidgets('Can switch between hour/minute fields using keyboard input action', (WidgetTester tester) async {
+    await startPicker(tester, (TimeOfDay? time) { }, entryMode: TimePickerEntryMode.input);
+
+    final Finder hourFinder = find.byType(TextField).first;
+    final TextField hourField = tester.widget(hourFinder);
+    await tester.tap(hourFinder);
+    expect(hourField.focusNode!.hasFocus, isTrue);
+
+    await tester.enterText(find.byType(TextField).first, '08');
+    final Finder minuteFinder = find.byType(TextField).last;
+    final TextField minuteField = tester.widget(minuteFinder);
+    expect(hourField.focusNode!.hasFocus, isFalse);
+    expect(minuteField.focusNode!.hasFocus, isTrue);
+
+    expect(tester.testTextInput.setClientArgs!['inputAction'], equals('TextInputAction.done'));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    expect(hourField.focusNode!.hasFocus, isFalse);
+    expect(minuteField.focusNode!.hasFocus, isFalse);
+  });
 }
 
 final Finder findDialPaint = find.descendant(
@@ -1163,6 +1372,8 @@ Future<void> mediaQueryBoilerplate(
   String? minuteLabelText,
   String? errorInvalidText,
   bool accessibleNavigation = false,
+  EntryModeChangeCallback? onEntryModeChange,
+  bool tapButton = true,
 }) async {
   await tester.pumpWidget(
     Localizations(
@@ -1176,6 +1387,7 @@ Future<void> mediaQueryBoilerplate(
           alwaysUse24HourFormat: alwaysUse24HourFormat,
           textScaleFactor: textScaleFactor,
           accessibleNavigation: accessibleNavigation,
+          size: tester.binding.window.physicalSize / tester.binding.window.devicePixelRatio,
         ),
         child: Material(
           child: Directionality(
@@ -1192,7 +1404,8 @@ Future<void> mediaQueryBoilerplate(
                         helpText: helpText,
                         hourLabelText: hourLabelText,
                         minuteLabelText: minuteLabelText,
-                        errorInvalidText: errorInvalidText
+                        errorInvalidText: errorInvalidText,
+                        onEntryModeChanged: onEntryModeChange,
                       );
                     },
                     child: const Text('X'),
@@ -1205,6 +1418,8 @@ Future<void> mediaQueryBoilerplate(
       ),
     ),
   );
-  await tester.tap(find.text('X'));
+  if (tapButton) {
+    await tester.tap(find.text('X'));
+  }
   await tester.pumpAndSettle();
 }

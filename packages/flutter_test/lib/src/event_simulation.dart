@@ -6,13 +6,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 
 import 'binding.dart';
 import 'test_async_utils.dart';
+import 'widget_tester.dart';
 
 // A tuple of `key` and `location` from Web's `KeyboardEvent` class.
 //
@@ -31,12 +30,12 @@ class _WebKeyLocationPair {
 
 String? _keyLabel(LogicalKeyboardKey key) {
   final String keyLabel = key.keyLabel;
-  if (keyLabel.length == 1)
+  if (keyLabel.length == 1) {
     return keyLabel.toLowerCase();
+  }
   return null;
 }
 
-// ignore: avoid_classes_with_only_static_members
 /// A class that serves as a namespace for a bunch of keyboard-key generation
 /// utilities.
 class KeyEventSimulator {
@@ -170,7 +169,7 @@ class KeyEventSimulator {
   static _WebKeyLocationPair _getWebKeyLocation(LogicalKeyboardKey key, String keyLabel) {
     String? result;
     for (final MapEntry<String, List<LogicalKeyboardKey?>> entry in kWebLocationMap.entries) {
-      final int foundIndex = entry.value.indexOf(key);
+      final int foundIndex = entry.value.lastIndexOf(key);
       // If foundIndex is -1, then the key is not defined in kWebLocationMap.
       // If foundIndex is 0, then the key is in the standard part of the keyboard,
       // but we have to check `keyLabel` to see if it's remapped or modified.
@@ -689,20 +688,21 @@ class KeyEventSimulator {
             result.complete(false);
             return;
           }
-          final Map<String, dynamic> decoded = SystemChannels.keyEvent.codec.decodeMessage(data) as Map<String, dynamic>;
-          result.complete(decoded['handled'] as bool);
+          final Map<String, Object?> decoded = SystemChannels.keyEvent.codec.decodeMessage(data)! as Map<String, dynamic>;
+          result.complete(decoded['handled']! as bool);
         }
       );
       return result.future;
     });
   }
 
-  static late final Map<String, PhysicalKeyboardKey> _debugNameToPhysicalKey = (() {
+  static final Map<String, PhysicalKeyboardKey> _debugNameToPhysicalKey = (() {
     final Map<String, PhysicalKeyboardKey> result = <String, PhysicalKeyboardKey>{};
     for (final PhysicalKeyboardKey key in PhysicalKeyboardKey.knownPhysicalKeys) {
       final String? debugName = key.debugName;
-      if (debugName != null)
+      if (debugName != null) {
         result[debugName] = key;
+      }
     }
     return result;
   })();
@@ -722,7 +722,7 @@ class KeyEventSimulator {
   // its values.
   //
   // The `_transitMode` defaults to [KeyDataTransitMode.rawKeyEvent], and can be
-  // overridden with [debugKeyEventSimulatorTransitModeOverride].  In widget tests, it
+  // overridden with [debugKeyEventSimulatorTransitModeOverride]. In widget tests, it
   // is often set with [KeySimulationModeVariant].
   static KeyDataTransitMode get _transitMode {
     KeyDataTransitMode? result;
@@ -758,18 +758,18 @@ class KeyEventSimulator {
     PhysicalKeyboardKey? physicalKey,
     String? character,
   }) async {
-    Future<bool> _simulateByRawEvent() {
+    Future<bool> simulateByRawEvent() {
       return _simulateKeyEventByRawEvent(() {
         platform ??= _defaultPlatform;
-        return getKeyData(key, platform: platform!, isDown: true, physicalKey: physicalKey, character: character);
+        return getKeyData(key, platform: platform!, physicalKey: physicalKey, character: character);
       });
     }
     switch (_transitMode) {
       case KeyDataTransitMode.rawKeyData:
-        return _simulateByRawEvent();
+        return simulateByRawEvent();
       case KeyDataTransitMode.keyDataThenRawKeyData:
         final LogicalKeyboardKey logicalKey = _getKeySynonym(key);
-        final bool resultByKeyEvent = ServicesBinding.instance!.keyEventManager.handleKeyData(
+        final bool resultByKeyEvent = ServicesBinding.instance.keyEventManager.handleKeyData(
           ui.KeyData(
             type: ui.KeyEventType.down,
             physical: (physicalKey ?? _findPhysicalKey(logicalKey)).usbHidUsage,
@@ -779,7 +779,7 @@ class KeyEventSimulator {
             synthesized: false,
           ),
         );
-        return (await _simulateByRawEvent()) || resultByKeyEvent;
+        return (await simulateByRawEvent()) || resultByKeyEvent;
     }
   }
 
@@ -803,7 +803,7 @@ class KeyEventSimulator {
     String? platform,
     PhysicalKeyboardKey? physicalKey,
   }) async {
-    Future<bool> _simulateByRawEvent() {
+    Future<bool> simulateByRawEvent() {
       return _simulateKeyEventByRawEvent(() {
         platform ??= _defaultPlatform;
         return getKeyData(key, platform: platform!, isDown: false, physicalKey: physicalKey);
@@ -811,10 +811,10 @@ class KeyEventSimulator {
     }
     switch (_transitMode) {
       case KeyDataTransitMode.rawKeyData:
-        return _simulateByRawEvent();
+        return simulateByRawEvent();
       case KeyDataTransitMode.keyDataThenRawKeyData:
         final LogicalKeyboardKey logicalKey = _getKeySynonym(key);
-        final bool resultByKeyEvent = ServicesBinding.instance!.keyEventManager.handleKeyData(
+        final bool resultByKeyEvent = ServicesBinding.instance.keyEventManager.handleKeyData(
           ui.KeyData(
             type: ui.KeyEventType.up,
             physical: (physicalKey ?? _findPhysicalKey(logicalKey)).usbHidUsage,
@@ -824,7 +824,7 @@ class KeyEventSimulator {
             synthesized: false,
           ),
         );
-        return (await _simulateByRawEvent()) || resultByKeyEvent;
+        return (await simulateByRawEvent()) || resultByKeyEvent;
     }
   }
 
@@ -849,18 +849,18 @@ class KeyEventSimulator {
     PhysicalKeyboardKey? physicalKey,
     String? character,
   }) async {
-    Future<bool> _simulateByRawEvent() {
+    Future<bool> simulateByRawEvent() {
       return _simulateKeyEventByRawEvent(() {
         platform ??= _defaultPlatform;
-        return getKeyData(key, platform: platform!, isDown: true, physicalKey: physicalKey, character: character);
+        return getKeyData(key, platform: platform!, physicalKey: physicalKey, character: character);
       });
     }
     switch (_transitMode) {
       case KeyDataTransitMode.rawKeyData:
-        return _simulateByRawEvent();
+        return simulateByRawEvent();
       case KeyDataTransitMode.keyDataThenRawKeyData:
         final LogicalKeyboardKey logicalKey = _getKeySynonym(key);
-        final bool resultByKeyEvent = ServicesBinding.instance!.keyEventManager.handleKeyData(
+        final bool resultByKeyEvent = ServicesBinding.instance.keyEventManager.handleKeyData(
           ui.KeyData(
             type: ui.KeyEventType.repeat,
             physical: (physicalKey ?? _findPhysicalKey(logicalKey)).usbHidUsage,
@@ -870,7 +870,7 @@ class KeyEventSimulator {
             synthesized: false,
           ),
         );
-        return (await _simulateByRawEvent()) || resultByKeyEvent;
+        return (await simulateByRawEvent()) || resultByKeyEvent;
     }
   }
 }
@@ -901,8 +901,13 @@ Future<bool> simulateKeyDownEvent(
   String? platform,
   PhysicalKeyboardKey? physicalKey,
   String? character,
-}) {
-  return KeyEventSimulator.simulateKeyDownEvent(key, platform: platform, physicalKey: physicalKey, character: character);
+}) async {
+  final bool handled = await KeyEventSimulator.simulateKeyDownEvent(key, platform: platform, physicalKey: physicalKey, character: character);
+  final ServicesBinding binding = ServicesBinding.instance;
+  if (!handled && binding is TestWidgetsFlutterBinding) {
+    await binding.testTextInput.handleKeyDownEvent(key);
+  }
+  return handled;
 }
 
 /// Simulates sending a hardware key up event through the system channel.
@@ -928,8 +933,13 @@ Future<bool> simulateKeyUpEvent(
   LogicalKeyboardKey key, {
   String? platform,
   PhysicalKeyboardKey? physicalKey,
-}) {
-  return KeyEventSimulator.simulateKeyUpEvent(key, platform: platform, physicalKey: physicalKey);
+}) async {
+  final bool handled = await KeyEventSimulator.simulateKeyUpEvent(key, platform: platform, physicalKey: physicalKey);
+  final ServicesBinding binding = ServicesBinding.instance;
+  if (!handled && binding is TestWidgetsFlutterBinding) {
+    await binding.testTextInput.handleKeyUpEvent(key);
+  }
+  return handled;
 }
 
 /// Simulates sending a hardware key repeat event through the system channel.
@@ -1000,7 +1010,7 @@ class KeySimulatorTransitModeVariant extends TestVariant<KeyDataTransitMode> {
     // ignore: invalid_use_of_visible_for_testing_member
     HardwareKeyboard.instance.clearState();
     // ignore: invalid_use_of_visible_for_testing_member
-    ServicesBinding.instance!.keyEventManager.clearState();
+    ServicesBinding.instance.keyEventManager.clearState();
     debugKeyEventSimulatorTransitModeOverride = memento;
   }
 }

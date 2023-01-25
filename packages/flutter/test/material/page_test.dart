@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+@Tags(<String>['reduced-test-set'])
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,10 +13,17 @@ import 'package:flutter_test/flutter_test.dart';
 import '../rendering/mock_canvas.dart';
 
 void main() {
-  testWidgets('test page transition', (WidgetTester tester) async {
+  testWidgets('test page transition (_FadeUpwardsPageTransition)', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: const Material(child: Text('Page 1')),
+        theme: ThemeData(
+          pageTransitionsTheme: const PageTransitionsTheme(
+            builders: <TargetPlatform, PageTransitionsBuilder>{
+              TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            },
+          ),
+        ),
         routes: <String, WidgetBuilder>{
           '/next': (BuildContext context) {
             return const Material(child: Text('Page 2'));
@@ -67,7 +77,7 @@ void main() {
     expect(find.text('Page 2'), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-  testWidgets('test page transition', (WidgetTester tester) async {
+  testWidgets('test page transition (CupertinoPageTransition)', (WidgetTester tester) async {
     final Key page2Key = UniqueKey();
     await tester.pumpWidget(
       MaterialApp(
@@ -147,6 +157,136 @@ void main() {
     // Page 1 is back where it started.
     expect(widget1InitialTopLeft == widget1TransientTopLeft, true);
   }, variant: const TargetPlatformVariant(<TargetPlatform>{ TargetPlatform.iOS, TargetPlatform.macOS }));
+<<<<<<< HEAD
+=======
+
+  testWidgets('test page transition (_ZoomPageTransition) without rasterization', (WidgetTester tester) async {
+    Iterable<Layer> findLayers(Finder of) {
+      return tester.layerListOf(
+        find.ancestor(of: of, matching: find.byType(SnapshotWidget)).first,
+      );
+    }
+
+    OpacityLayer findForwardFadeTransition(Finder of) {
+      return findLayers(of).whereType<OpacityLayer>().first;
+    }
+
+    TransformLayer findForwardScaleTransition(Finder of) {
+      return findLayers(of).whereType<TransformLayer>().first;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        onGenerateRoute: (RouteSettings settings) {
+          return MaterialPageRoute<void>(
+            allowSnapshotting: false,
+            builder: (BuildContext context) {
+              if (settings.name == '/') {
+                return const Material(child: Text('Page 1'));
+              }
+              return const Material(child: Text('Page 2'));
+            },
+          );
+        },
+      ),
+    );
+
+    tester.state<NavigatorState>(find.byType(Navigator)).pushNamed('/next');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    TransformLayer widget1Scale = findForwardScaleTransition(find.text('Page 1'));
+    TransformLayer widget2Scale = findForwardScaleTransition(find.text('Page 2'));
+    OpacityLayer widget2Opacity = findForwardFadeTransition(find.text('Page 2'));
+
+    double getScale(TransformLayer layer) {
+      return layer.transform!.storage[0];
+    }
+
+    // Page 1 is enlarging, starts from 1.0.
+    expect(getScale(widget1Scale), greaterThan(1.0));
+    // Page 2 is enlarging from the value less than 1.0.
+    expect(getScale(widget2Scale), lessThan(1.0));
+    // Page 2 is becoming none transparent.
+    expect(widget2Opacity.alpha, lessThan(255));
+
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    // Page 2 covers page 1.
+    expect(find.text('Page 1'), findsNothing);
+    expect(find.text('Page 2'), isOnstage);
+
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    widget1Scale = findForwardScaleTransition(find.text('Page 1'));
+    widget2Scale = findForwardScaleTransition(find.text('Page 2'));
+    widget2Opacity = findForwardFadeTransition(find.text('Page 2'));
+
+    // Page 1 is narrowing down, but still larger than 1.0.
+    expect(getScale(widget1Scale), greaterThan(1.0));
+    // Page 2 is smaller than 1.0.
+    expect(getScale(widget2Scale), lessThan(1.0));
+    // Page 2 is becoming transparent.
+    expect(widget2Opacity.alpha, lessThan(255));
+
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.text('Page 1'), isOnstage);
+    expect(find.text('Page 2'), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('test page transition (_ZoomPageTransition) with rasterization re-rasterizes when window insets', (WidgetTester tester) async {
+    late Size oldSize;
+    late ui.WindowPadding oldInsets;
+    try {
+      oldSize = tester.binding.window.physicalSize;
+      oldInsets = tester.binding.window.viewInsets;
+      tester.binding.window.physicalSizeTestValue = const Size(1000, 1000);
+      tester.binding.window.viewInsetsTestValue = ui.WindowPadding.zero;
+
+      // Intentionally use nested scaffolds to simulate the view insets being
+      // consumed.
+      final Key key = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: MaterialApp(
+            onGenerateRoute: (RouteSettings settings) {
+              return MaterialPageRoute<void>(
+                builder: (BuildContext context) {
+                  return const Scaffold(body: Scaffold(
+                    body: Material(child: SizedBox.shrink())
+                  ));
+                },
+              );
+            },
+          ),
+        ),
+      );
+
+      tester.state<NavigatorState>(find.byType(Navigator)).pushNamed('/next');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await expectLater(find.byKey(key), matchesGoldenFile('zoom_page_transition.small.png'));
+
+       // Change the view insets
+      tester.binding.window.viewInsetsTestValue = const TestWindowPadding(left: 0, top: 0, right: 0, bottom: 500);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await expectLater(find.byKey(key), matchesGoldenFile('zoom_page_transition.big.png'));
+    } finally {
+      tester.binding.window.physicalSizeTestValue = oldSize;
+      tester.binding.window.viewInsetsTestValue = oldInsets;
+    }
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android), skip: kIsWeb); // [intended] rasterization is not used on the web.
+>>>>>>> b06b8b2710955028a6b562f5aa6fe62941d6febf
 
   testWidgets('test fullscreen dialog transition', (WidgetTester tester) async {
     await tester.pumpWidget(
@@ -879,7 +1019,7 @@ void main() {
     expect(find.text('second'), findsOneWidget);
 
     myPages = <Page<void>>[
-      MaterialPage<void>(key: pageKeyOne, maintainState: true, child: const Text('first')),
+      MaterialPage<void>(key: pageKeyOne, child: const Text('first')),
       MaterialPage<void>(key: pageKeyTwo, child: const Text('second')),
     ];
 
@@ -918,8 +1058,7 @@ void main() {
     await tester.pumpWidget(
       RootRestorationScope(
         restorationId: 'root',
-        child: Directionality(
-          textDirection: TextDirection.ltr,
+        child: TestDependencies(
           child: Navigator(
             onPopPage: (Route<dynamic> route, dynamic result) { return false; },
             pages: const <Page<Object?>>[
@@ -998,7 +1137,7 @@ Widget buildNavigator({
   TransitionDelegate<dynamic>? transitionDelegate,
 }) {
   return MediaQuery(
-    data: MediaQueryData.fromWindow(WidgetsBinding.instance!.window),
+    data: MediaQueryData.fromWindow(WidgetsBinding.instance.window),
     child: Localizations(
       locale: const Locale('en', 'US'),
       delegates: const <LocalizationsDelegate<dynamic>>[
@@ -1019,7 +1158,7 @@ Widget buildNavigator({
 }
 
 class KeepsStateTestWidget extends StatefulWidget {
-  const KeepsStateTestWidget({Key? key, this.navigatorKey}) : super(key: key);
+  const KeepsStateTestWidget({super.key, this.navigatorKey});
 
   final Key? navigatorKey;
 
@@ -1054,7 +1193,7 @@ class _KeepsStateTestWidgetState extends State<KeepsStateTestWidget> {
 }
 
 class TestRestorableWidget extends StatefulWidget {
-  const TestRestorableWidget({Key? key, required this.restorationId}) : super(key: key);
+  const TestRestorableWidget({super.key, required this.restorationId});
 
   final String restorationId;
 
@@ -1090,4 +1229,39 @@ class _TestRestorableWidgetState extends State<TestRestorableWidget> with Restor
       ],
     );
   }
+}
+
+class TestDependencies extends StatelessWidget {
+  const TestDependencies({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: MediaQuery(
+        data: MediaQueryData.fromWindow(WidgetsBinding.instance.window),
+        child: child,
+      ),
+    );
+  }
+}
+
+class TestWindowPadding implements ui.WindowPadding {
+  const TestWindowPadding({
+    required this.left,
+    required this.top,
+    required this.right,
+    required this.bottom,
+  });
+
+  @override
+  final double left;
+  @override
+  final double top;
+  @override
+  final double right;
+  @override
+  final double bottom;
 }

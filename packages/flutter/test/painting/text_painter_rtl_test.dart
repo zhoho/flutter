@@ -21,17 +21,18 @@ void main() {
     painter.layout();
 
     expect(
-      painter.getWordBoundary(const TextPosition(offset: 1, affinity: TextAffinity.downstream)),
+      painter.getWordBoundary(const TextPosition(offset: 1)),
       const TextRange(start: 0, end: 3),
     );
     expect(
-      painter.getWordBoundary(const TextPosition(offset: 5, affinity: TextAffinity.downstream)),
+      painter.getWordBoundary(const TextPosition(offset: 5)),
       const TextRange(start: 4, end: 7),
     );
     expect(
-      painter.getWordBoundary(const TextPosition(offset: 9, affinity: TextAffinity.downstream)),
+      painter.getWordBoundary(const TextPosition(offset: 9)),
       const TextRange(start: 8, end: 11),
     );
+    painter.dispose();
   });
 
   test('TextPainter - bidi overrides in LTR', () {
@@ -50,11 +51,11 @@ void main() {
     // The skips here are because the old rendering code considers the bidi formatting characters
     // to be part of the word sometimes and not others, which is fine, but we'd mildly prefer if
     // we were consistently considering them part of words always.
-    final TextRange hebrew1 = painter.getWordBoundary(const TextPosition(offset: 4, affinity: TextAffinity.downstream));
+    final TextRange hebrew1 = painter.getWordBoundary(const TextPosition(offset: 4));
     expect(hebrew1, const TextRange(start: 0, end: 8), skip: skipExpectsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
-    final TextRange english2 = painter.getWordBoundary(const TextPosition(offset: 14, affinity: TextAffinity.downstream));
+    final TextRange english2 = painter.getWordBoundary(const TextPosition(offset: 14));
     expect(english2, const TextRange(start: 9, end: 19), skip: skipExpectsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
-    final TextRange hebrew3 = painter.getWordBoundary(const TextPosition(offset: 24, affinity: TextAffinity.downstream));
+    final TextRange hebrew3 = painter.getWordBoundary(const TextPosition(offset: 24));
     expect(hebrew3, const TextRange(start: 20, end: 28));
 
     //                              >>>>>>>>>>>>>>>                       embedding level 2
@@ -72,7 +73,7 @@ void main() {
       Offset.zero,
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 0, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 0), Rect.zero),
       Offset.zero,
     );
     expect(
@@ -80,7 +81,7 @@ void main() {
       const Offset(240.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 1, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 1), Rect.zero),
       const Offset(240.0, 0.0),
     );
     expect(
@@ -88,7 +89,7 @@ void main() {
       const Offset(180.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 7, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 7), Rect.zero),
       const Offset(180.0, 0.0),
     );
     expect(
@@ -96,7 +97,7 @@ void main() {
       const Offset(170.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 8, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 8), Rect.zero),
       const Offset(170.0, 0.0),
     );
     expect(
@@ -104,7 +105,7 @@ void main() {
       const Offset(160.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 9, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 9), Rect.zero),
       const Offset(160.0, 0.0),
     );
     expect(
@@ -112,7 +113,7 @@ void main() {
       const Offset(80.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 10, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 10), Rect.zero),
       const Offset(80.0, 0.0),
     );
 
@@ -164,6 +165,7 @@ void main() {
       // The list currently has one extra bogus entry (the last entry, for the
       // trailing U+202C PDF, should be empty but is one-pixel-wide instead).
     ], skip: skipExpectsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - bidi overrides in RTL', () {
@@ -179,11 +181,11 @@ void main() {
     expect(textSpan.text!.length, 28);
     painter.layout();
 
-    final TextRange hebrew1 = painter.getWordBoundary(const TextPosition(offset: 4, affinity: TextAffinity.downstream));
+    final TextRange hebrew1 = painter.getWordBoundary(const TextPosition(offset: 4));
     expect(hebrew1, const TextRange(start: 0, end: 8), skip: skipExpectsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
-    final TextRange english2 = painter.getWordBoundary(const TextPosition(offset: 14, affinity: TextAffinity.downstream));
+    final TextRange english2 = painter.getWordBoundary(const TextPosition(offset: 14));
     expect(english2, const TextRange(start: 9, end: 19), skip: skipExpectsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
-    final TextRange hebrew3 = painter.getWordBoundary(const TextPosition(offset: 24, affinity: TextAffinity.downstream));
+    final TextRange hebrew3 = painter.getWordBoundary(const TextPosition(offset: 24));
     expect(hebrew3, const TextRange(start: 20, end: 28));
 
     //                              >>>>>>>>>>>>>>>                       embedding level 2
@@ -200,7 +202,7 @@ void main() {
       const Offset(240.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 0, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 0), Rect.zero),
       const Offset(240.0, 0.0),
     );
     expect(
@@ -208,7 +210,7 @@ void main() {
       const Offset(240.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 1, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 1), Rect.zero),
       const Offset(240.0, 0.0),
     );
     expect(
@@ -216,7 +218,7 @@ void main() {
       const Offset(180.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 7, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 7), Rect.zero),
       const Offset(180.0, 0.0),
     );
     expect(
@@ -224,7 +226,7 @@ void main() {
       const Offset(170.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 8, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 8), Rect.zero),
       const Offset(170.0, 0.0),
     );
     expect(
@@ -232,7 +234,7 @@ void main() {
       const Offset(160.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 9, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 9), Rect.zero),
       const Offset(160.0, 0.0),
     );
     expect(
@@ -240,7 +242,7 @@ void main() {
       const Offset(80.0, 0.0),
     );
     expect(
-      painter.getOffsetForCaret(const TextPosition(offset: 10, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 10), Rect.zero),
       const Offset(80.0, 0.0),
     );
 
@@ -255,6 +257,7 @@ void main() {
       // The list is currently in the wrong order (so selection boxes will paint in the wrong order).
       skip: skipExpectsWithKnownBugs, // https://github.com/flutter/flutter/issues/87536
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - forced line-wrapping with bidi', () {
@@ -271,7 +274,7 @@ void main() {
 
     for (int index = 0; index <= 2; index += 1) {
       expect(
-        painter.getWordBoundary(const TextPosition(offset: 0, affinity: TextAffinity.downstream)),
+        painter.getWordBoundary(const TextPosition(offset: 0)),
         const TextRange(start: 0, end: 2),
       );
     }
@@ -281,7 +284,7 @@ void main() {
       Offset.zero,
     );
     expect( // before the A
-      painter.getOffsetForCaret(const TextPosition(offset: 0, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 0), Rect.zero),
       Offset.zero,
     );
 
@@ -290,7 +293,7 @@ void main() {
       const Offset(10.0, 0.0),
     );
     expect( // between A and Alef, before the Alef
-      painter.getOffsetForCaret(const TextPosition(offset: 1, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 1), Rect.zero),
       const Offset(10.0, 10.0),
     );
 
@@ -299,7 +302,7 @@ void main() {
       const Offset(0.0, 10.0),
     );
     expect( // after the Alef
-      painter.getOffsetForCaret(const TextPosition(offset: 2, affinity: TextAffinity.downstream), Rect.zero),
+      painter.getOffsetForCaret(const TextPosition(offset: 2), Rect.zero),
       const Offset(0.0, 10.0),
     );
 
@@ -322,6 +325,7 @@ void main() {
         TextBox.fromLTRBD(0.0, 10.0, 10.0, 20.0, TextDirection.rtl), // Alef
       ],
     );
+    painter.dispose();
   }, skip: isBrowser); // https://github.com/flutter/flutter/issues/32238
 
   test('TextPainter - line wrap mid-word', () {
@@ -356,6 +360,7 @@ void main() {
       // horizontal offsets are one pixel off in places; vertical offsets are good
       skip: skipExpectsWithKnownBugs, // https://github.com/flutter/flutter/issues/87536
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - line wrap mid-word, bidi - LTR base', () {
@@ -412,6 +417,7 @@ void main() {
       <TextBox>[TextBox.fromLTRBD(70.0, 28.0, 80.0, 38.0, TextDirection.ltr)],
       <TextBox>[TextBox.fromLTRBD(80.0, 28.0, 90.0, 38.0, TextDirection.ltr)],
     ]);
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - line wrap mid-word, bidi - RTL base', () {
@@ -447,6 +453,7 @@ void main() {
       // The list is currently in the wrong order (so selection boxes will paint in the wrong order).
       skip: skipExpectsWithKnownBugs, // https://github.com/flutter/flutter/issues/87536
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - multiple levels', () {
@@ -478,6 +485,7 @@ void main() {
       // Also currently there's an extraneous box at the start of the list.
       skip: skipExpectsWithKnownBugs, // https://github.com/flutter/flutter/issues/87536
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - getPositionForOffset - RTL in LTR', () {
@@ -495,19 +503,19 @@ void main() {
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
       // ^
       painter.getPositionForOffset(const Offset(0.0, 5.0)).toString(),
-      const TextPosition(offset: 0, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 0).toString(),
     );
     expect(
       //                     Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
       // ^
       painter.getPositionForOffset(const Offset(-100.0, 5.0)).toString(),
-      const TextPosition(offset: 0, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 0).toString(),
     );
     expect(
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
       //  ^
       painter.getPositionForOffset(const Offset(4.0, 5.0)).toString(),
-      const TextPosition(offset: 0, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 0).toString(),
     );
     expect(
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
@@ -519,7 +527,7 @@ void main() {
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
       //       ^
       painter.getPositionForOffset(const Offset(12.0, 5.0)).toString(),
-      const TextPosition(offset: 1, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 1).toString(),
       // currently we say upstream instead of downstream
       skip: skipExpectsWithKnownBugs, // https://github.com/flutter/flutter/issues/87536
     );
@@ -540,14 +548,14 @@ void main() {
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
       //                                ^
       painter.getPositionForOffset(const Offset(58.0, 5.0)).toString(),
-      const TextPosition(offset: 3, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 3).toString(),
       skip: skipExpectsWithKnownBugs, // this is part of https://github.com/flutter/flutter/issues/11375
     );
     expect(
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
       //                                   ^
       painter.getPositionForOffset(const Offset(62.0, 5.0)).toString(),
-      const TextPosition(offset: 6, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 6).toString(),
     );
     expect(
       //  Aaa  Bbb  Ccc  Gimel  Bet  Alef  Ddd  Eee  Fff
@@ -561,6 +569,7 @@ void main() {
       painter.getPositionForOffset(const Offset(100.0, 5.0)).toString(),
       const TextPosition(offset: 9, affinity: TextAffinity.upstream).toString(),
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - getPositionForOffset - LTR in RTL', () {
@@ -584,13 +593,13 @@ void main() {
       // Vav He Dalet Aaa Bbb Ccc Gimel Bet Alef
       //            ^
       painter.getPositionForOffset(const Offset(28.0, 5.0)).toString(),
-      const TextPosition(offset: 6, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 6).toString(),
     );
     expect(
       // Vav He Dalet Aaa Bbb Ccc Gimel Bet Alef
       //              ^
       painter.getPositionForOffset(const Offset(32.0, 5.0)).toString(),
-      const TextPosition(offset: 3, affinity: TextAffinity.downstream).toString(),
+      const TextPosition(offset: 3).toString(),
       skip: skipExpectsWithKnownBugs, // this is part of https://github.com/flutter/flutter/issues/11375
     );
     expect(
@@ -606,6 +615,7 @@ void main() {
       painter.getPositionForOffset(const Offset(62.0, 5.0)).toString(),
       const TextPosition(offset: 3, affinity: TextAffinity.upstream).toString(),
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - Spaces', () {
@@ -667,6 +677,7 @@ void main() {
       // Horizontal offsets are currently one pixel off in places; vertical offsets are good.
       skip: skipExpectsWithKnownBugs, // https://github.com/flutter/flutter/issues/87536
     );
+    painter.dispose();
   }, skip: skipTestsWithKnownBugs); // https://github.com/flutter/flutter/issues/87536
 
   test('TextPainter - empty text baseline', () {
@@ -678,6 +689,7 @@ void main() {
     );
     painter.layout();
     expect(painter.computeDistanceToActualBaseline(TextBaseline.alphabetic), moreOrLessEquals(80.0, epsilon: 0.001));
+    painter.dispose();
   });
 }
 

@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// @dart = 2.8
-
 import '../artifacts.dart';
 import '../base/common.dart';
 import '../base/file_system.dart';
 import '../base/logger.dart';
+import '../base/project_migrator.dart';
 import '../build_info.dart';
 import '../build_system/build_system.dart';
 import '../build_system/targets/web.dart';
 import '../cache.dart';
 import '../flutter_plugins.dart';
-import '../globals_null_migrated.dart' as globals;
+import '../globals.dart' as globals;
 import '../platform_plugins.dart';
 import '../plugins.dart';
 import '../project.dart';
+import 'migrations/scrub_generated_plugin_registrant.dart';
 
 Future<void> buildWeb(
   FlutterProject flutterProject,
@@ -25,19 +25,32 @@ Future<void> buildWeb(
   bool csp,
   String serviceWorkerStrategy,
   bool sourceMaps,
-  bool nativeNullAssertions,
-  String baseHref,
-) async {
+  bool nativeNullAssertions, {
+  String? dart2jsOptimization,
+  String? baseHref,
+  bool dumpInfo = false,
+  bool noFrequencyBasedMinification = false,
+  String? outputDirectoryPath,
+}) async {
   final bool hasWebPlugins = (await findPlugins(flutterProject))
     .any((Plugin p) => p.platforms.containsKey(WebPlugin.kConfigKey));
-  final Directory outputDirectory = globals.fs.directory(getWebBuildDirectory());
+  final Directory outputDirectory = outputDirectoryPath == null
+      ? globals.fs.directory(getWebBuildDirectory())
+      : globals.fs.directory(outputDirectoryPath);
   outputDirectory.createSync(recursive: true);
 
-  await injectPlugins(flutterProject, webPlatform: true);
+  // The migrators to apply to a Web project.
+  final List<ProjectMigrator> migrators = <ProjectMigrator>[
+    ScrubGeneratedPluginRegistrant(flutterProject.web, globals.logger),
+  ];
+
+  final ProjectMigration migration = ProjectMigration(migrators);
+  migration.run();
+
   final Status status = globals.logger.startProgress('Compiling $target for the Web...');
   final Stopwatch sw = Stopwatch()..start();
   try {
-    final BuildResult result = await globals.buildSystem.build(const WebServiceWorker(), Environment(
+    final BuildResult result = await globals.buildSystem.build(WebServiceWorker(globals.fs, globals.cache), Environment(
       projectDir: globals.fs.currentDirectory,
       outputDir: outputDirectory,
       buildDir: flutterProject.directory
@@ -47,20 +60,26 @@ Future<void> buildWeb(
         kTargetFile: target,
         kHasWebPlugins: hasWebPlugins.toString(),
         kCspMode: csp.toString(),
-        kBaseHref : baseHref,
+        if (baseHref != null)
+          kBaseHref : baseHref,
         kSourceMapsEnabled: sourceMaps.toString(),
         kNativeNullAssertions: nativeNullAssertions.toString(),
         if (serviceWorkerStrategy != null)
          kServiceWorkerStrategy: serviceWorkerStrategy,
+        if (dart2jsOptimization != null)
+         kDart2jsOptimization: dart2jsOptimization,
+        kDart2jsDumpInfo: dumpInfo.toString(),
+        kDart2jsNoFrequencyBasedMinification: noFrequencyBasedMinification.toString(),
         ...buildInfo.toBuildSystemEnvironment(),
       },
-      artifacts: globals.artifacts,
+      artifacts: globals.artifacts!,
       fileSystem: globals.fs,
       logger: globals.logger,
       processManager: globals.processManager,
       platform: globals.platform,
+      usage: globals.flutterUsage,
       cacheDir: globals.cache.getRoot(),
-      engineVersion: globals.artifacts.isLocalEngine
+      engineVersion: globals.artifacts!.isLocalEngine
         ? null
         : globals.flutterVersion.engineRevision,
       flutterRootDir: globals.fs.directory(Cache.flutterRoot),
